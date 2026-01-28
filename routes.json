@@ -1,0 +1,4 @@
+{
+  "/meteo/v1/live": "/live",
+  "/meteo/v1/archive": "/archive"
+}
