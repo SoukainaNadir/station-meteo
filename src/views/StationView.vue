@@ -1,8 +1,9 @@
 <script setup>
-import { onMounted, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { useMeteoStore } from "@/stores/meteo";
 import SensorCard from "@/components/widgets/SensorCard.vue";
+import ChartWidget from "@/components/widgets/ChartWidget.vue"; // AJOUT IMPORTANT
 
 const route = useRoute();
 const meteoStore = useMeteoStore();
@@ -10,11 +11,57 @@ const meteoStore = useMeteoStore();
 const sondeId = computed(() => route.params.id);
 const station = computed(() => meteoStore.getSondeById(sondeId.value));
 
+// Variables pour les graphiques
+const chartLoading = ref(false);
+const temperatureData = ref([]);
+const humidityData = ref([]);
+const pressureData = ref([]);
+
+// Fonction pour charger les données historiques
+const loadChartData = async (period) => {
+  chartLoading.value = true;
+  
+  try {
+    const data = await meteoStore.fetchArchiveDataByPeriod(sondeId.value, period);
+    
+    // Extraire les données de température
+    temperatureData.value = data.map(item => ({
+      time: item.time,
+      value: item.value
+    }));
+    
+    // Générer des données pour humidité (vous pouvez adapter selon vos données réelles)
+    humidityData.value = data.map(item => ({
+      time: item.time,
+      value: item.value * 0.3 + 50 // Exemple de transformation
+    }));
+    
+    // Générer des données pour pression
+    pressureData.value = data.map(item => ({
+      time: item.time,
+      value: 1013 + (item.value - 20) * 2 // Exemple de transformation
+    }));
+    
+  } catch (err) {
+    console.error("Erreur chargement historique:", err);
+  } finally {
+    chartLoading.value = false;
+  }
+};
+
+// Handler pour le changement de période
+const handlePeriodChange = (period) => {
+  console.log('Période changée:', period);
+  loadChartData(period);
+};
+
 const loadStationData = async () => {
   try {
     if (meteoStore.sondes.length === 0) {
       await meteoStore.fetchAllSondes();
     }
+    // Charger les données par défaut (24h)
+    await loadChartData({ label: '24h', value: '24h', hours: 24 });
   } catch (err) {
     console.error("Erreur:", err);
   }
@@ -65,7 +112,7 @@ onMounted(() => {
           <v-btn
             icon
             variant="text"
-            @click="meteoStore.refresh()"
+            @click="loadStationData()"
             :loading="meteoStore.loading"
           >
             <v-icon>mdi-refresh</v-icon>
