@@ -1,15 +1,20 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
 import { useMeteoStore } from "@/stores/meteo";
 import SensorCard from "@/components/widgets/SensorCard.vue";
-import ChartWidget from "@/components/widgets/ChartWidget.vue"; // AJOUT IMPORTANT
+import ChartWidget from "@/components/widgets/ChartWidget.vue";
+import websocketService from "@/services/websocket.service";
 
 const route = useRoute();
 const meteoStore = useMeteoStore();
 
 const sondeId = computed(() => route.params.id);
 const station = computed(() => meteoStore.getSondeById(sondeId.value));
+
+// WebSocket
+const wsConnected = ref(false);
+let unsubscribe = null;
 
 // Variables pour les graphiques
 const chartLoading = ref(false);
@@ -24,22 +29,19 @@ const loadChartData = async (period) => {
   try {
     const data = await meteoStore.fetchArchiveDataByPeriod(sondeId.value, period);
     
-    // Extraire les données de température
     temperatureData.value = data.map(item => ({
       time: item.time,
       value: item.value
     }));
     
-    // Générer des données pour humidité (vous pouvez adapter selon vos données réelles)
     humidityData.value = data.map(item => ({
       time: item.time,
-      value: item.value * 0.3 + 50 // Exemple de transformation
+      value: item.value * 0.3 + 50
     }));
     
-    // Générer des données pour pression
     pressureData.value = data.map(item => ({
       time: item.time,
-      value: 1013 + (item.value - 20) * 2 // Exemple de transformation
+      value: 1013 + (item.value - 20) * 2
     }));
     
   } catch (err) {
@@ -49,9 +51,7 @@ const loadChartData = async (period) => {
   }
 };
 
-// Handler pour le changement de période
 const handlePeriodChange = (period) => {
-  console.log('Période changée:', period);
   loadChartData(period);
 };
 
@@ -60,7 +60,6 @@ const loadStationData = async () => {
     if (meteoStore.sondes.length === 0) {
       await meteoStore.fetchAllSondes();
     }
-    // Charger les données par défaut (24h)
     await loadChartData({ label: '24h', value: '24h', hours: 24 });
   } catch (err) {
     console.error("Erreur:", err);
@@ -81,6 +80,39 @@ const formatDate = (dateString) => {
 
 onMounted(() => {
   loadStationData();
+
+  const wsUrl = 'wss://websocketking.com'; 
+  
+  try {
+    websocketService.connect(sondeId.value, wsUrl);
+    wsConnected.value = true;
+    
+    // S'abonner aux mises à jour
+    unsubscribe = websocketService.subscribe(
+      sondeId.value,
+      'sensor-update',
+      (data) => {
+        console.log('📡 Mise à jour reçue:', data);
+        
+        // Mettre à jour la station dans le store
+        const index = meteoStore.sondes.findIndex(s => s.sonde_id === sondeId.value);
+        if (index !== -1 && data.measurements) {
+          meteoStore.sondes[index].measurements = data.measurements;
+          meteoStore.sondes[index].date = data.date || new Date().toISOString();
+        }
+      }
+    );
+  } catch (err) {
+    console.error('Erreur WebSocket:', err);
+    wsConnected.value = false;
+  }
+});
+
+onUnmounted(() => {
+  if (unsubscribe) {
+    unsubscribe();
+  }
+  websocketService.disconnect(sondeId.value);
 });
 </script>
 
@@ -94,9 +126,24 @@ onMounted(() => {
           </v-btn>
 
           <div class="ml-4">
-            <h1 class="text-h4 font-weight-bold">
-              {{ station?.name || `Sonde ${sondeId}` }}
-            </h1>
+            <div class="d-flex align-center">
+              <h1 class="text-h4 font-weight-bold">
+                {{ station?.name || `Sonde ${sondeId}` }}
+              </h1>
+              
+              <!-- Indicateur WebSocket -->
+              <v-chip 
+                :color="wsConnected ? 'success' : 'grey'" 
+                size="small" 
+                class="ml-3"
+              >
+                <v-icon start size="x-small">
+                  {{ wsConnected ? 'mdi-wifi' : 'mdi-wifi-off' }}
+                </v-icon>
+                {{ wsConnected ? 'Temps réel' : 'Hors ligne' }}
+              </v-chip>
+            </div>
+            
             <div class="text-subtitle-1 text-grey">
               <v-icon size="small" class="mr-1">mdi-map-marker</v-icon>
               {{ station?.location?.lat }}, {{ station?.location?.long }}

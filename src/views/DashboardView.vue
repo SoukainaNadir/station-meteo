@@ -39,7 +39,7 @@
         <SensorCard
           icon="mdi-thermometer"
           label="Température"
-          :value="meteoStore.measurements.temperature?.value?.toFixed(1) || '--'"
+          :value="meteoStore.measurements.temperature?.value?.toFixed(2) || '--'"
           :unit="meteoStore.measurements.temperature?.unit || '°C'"
           color="#FF7675"
         />
@@ -49,7 +49,7 @@
         <SensorCard
           icon="mdi-water-percent"
           label="Humidité"
-          :value="meteoStore.measurements.humidity?.value?.toFixed(0) || '--'"
+          :value="meteoStore.measurements.humidity?.value?.toFixed(2) || '--'"
           :unit="meteoStore.measurements.humidity?.unit || '%'"
           color="#74B9FF"
         />
