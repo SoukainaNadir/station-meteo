@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
+
 export const useMeteoStore = defineStore('meteo', {
 
   state: () => ({
@@ -10,7 +11,6 @@ export const useMeteoStore = defineStore('meteo', {
     loading: false,
     error: null
   }),
-
 
   getters: {
     getSondeById: (state) => (sondeId) => {
@@ -32,15 +32,24 @@ export const useMeteoStore = defineStore('meteo', {
 
   actions: {
     async fetchAllSondes() {
+      console.log('=== FRONTEND: fetchAllSondes() ===')
       this.loading = true
       this.error = null
 
+      const requestParams = {
+        data: 'temperature,humidity,pressure,wind_speed,wind_direction,rain'
+      }
+
+      console.log('📡 Sending request to /meteo/v1/live')
+      console.log('   Params:', requestParams)
+
       try {
         const response = await axios.get('/meteo/v1/live', {
-          params: {
-            data: 'temperature,humidity,pressure,wind_speed,wind_direction,rain'
-          }
+          params: requestParams
         })
+
+        console.log('✅ Response received:', response.status)
+        console.log('   Data:', JSON.stringify(response.data, null, 2))
 
         this.sondes = [
           {
@@ -50,17 +59,27 @@ export const useMeteoStore = defineStore('meteo', {
           }
         ]
 
+        console.log('✅ Sondes updated in store:', this.sondes.length, 'sonde(s)')
+        console.log('   Sonde details:', this.sondes[0])
+        console.log('================================\n')
+
         return this.sondes
       } catch (err) {
+        console.error('❌ Error in fetchAllSondes:')
+        console.error('   Message:', err.message)
+        console.error('   Response:', err.response?.data)
+        console.error('   Status:', err.response?.status)
+        console.error('   Full error:', err)
+        console.log('================================\n')
+
         this.error = 'Erreur lors du chargement des sondes'
-        console.error('Erreur fetchAllSondes:', err)
         throw err
       } finally {
         this.loading = false
       }
     },
 
-    async fetchArchiveDataByPeriod(sondeId, period) {
+    async fetchArchiveDataByPeriod(sondeId, period, measurementType = 'temperature') {
       this.loading = true
       this.error = null
 
@@ -74,11 +93,11 @@ export const useMeteoStore = defineStore('meteo', {
 
         const { legend, data } = response.data
         const timeIndex = legend.indexOf('time')
-        const tempIndex = legend.indexOf('temperature')
+        const measurementIndex = legend.indexOf(measurementType)
 
         const parsedData = data.map(row => ({
           time: row[timeIndex],
-          value: row[tempIndex]
+          value: row[measurementIndex]
         }))
 
         return parsedData
@@ -90,7 +109,7 @@ export const useMeteoStore = defineStore('meteo', {
         this.loading = false
       }
     },
-   
+    
     async refresh() {
       await this.fetchAllSondes()
     }

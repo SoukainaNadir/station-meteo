@@ -1,45 +1,55 @@
 <template>
   <v-app>
+    <NavigationDrawer />
+    
     <v-app-bar color="primary" prominent>
-      <v-app-bar-title class="text-h5 font-weight-bold">
-        <v-icon start size="32">mdi-weather-partly-cloudy</v-icon>
-        Station Météo
+      <v-app-bar-title class="text-h5 font-weight-medium">
+        {{ currentPageTitle }}
       </v-app-bar-title>
-
+      
       <v-spacer></v-spacer>
-
-      <v-btn icon to="/">
-        <v-icon>mdi-map</v-icon>
-      </v-btn>
-      <v-btn icon to="/comparison">
-        <v-icon>mdi-compare</v-icon>
-      </v-btn>
+      
+      <v-btn icon="mdi-bell-outline" variant="text"></v-btn>
+      <v-btn icon="mdi-account-circle" variant="text"></v-btn>
     </v-app-bar>
 
-    <v-main style="background-color: var(--background);">
+    <v-main class="bg-grey-lighten-4">
       <router-view />
     </v-main>
   </v-app>
 </template>
 
-<style>
-:root {
-  --primary: #6C5CE7;
-  --secondary: #00B894;
-  --accent: #FDCB6E;
-  
-  --temperature: #FF7675;
-  --humidity: #74B9FF;
-  --pressure: #A29BFE;
-  --wind: #55EFC4;
-  --rain: #0984E3;
-  --light: #FFEAA7;
-  
-  --background: #F5F6FA;
-  --surface: #FFFFFF;
+<script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { useMeteoStore } from '@/stores/meteo'
+import NavigationDrawer from '@/components/navigation/NavigationDrawer.vue'
+
+const route = useRoute()
+const meteoStore = useMeteoStore()
+
+const pageTitles = {
+  '/': 'Dashboard',
+  '/map': 'Carte des Sondes',
+  '/history': 'Historique',
+  '/comparison': 'Comparaison',
+  '/settings': 'Paramètres',
+  '/help': 'Aide'
 }
 
-.v-application {
-  font-family: 'Inter', sans-serif;
+const currentPageTitle = computed(() => {
+  if (route.path.startsWith('/station/')) {
+    const sondeId = route.params.id
+    const sonde = meteoStore.getSondeById(sondeId)
+    return sonde ? `Station ${sonde.name}` : 'Détails de la Station'
+  }
+  
+  return pageTitles[route.path] || 'Station Météo Dashboard'
+})
+</script>
+
+<style scoped>
+.v-app-bar {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
 }
 </style>

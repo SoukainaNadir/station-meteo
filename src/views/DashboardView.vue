@@ -11,11 +11,11 @@
             </h1>
             <div class="text-subtitle-1 text-grey mt-2">
               <v-icon size="small" class="mr-1">mdi-map-marker</v-icon>
-              {{ meteoStore.stationLocation?.lat }}, {{ meteoStore.stationLocation?.long }}
+              {{ stationLocation?.lat }}, {{ stationLocation?.long }}
             </div>
             <div class="text-caption text-grey">
               <v-icon size="small" class="mr-1">mdi-clock-outline</v-icon>
-              Dernière mise à jour: {{ formatDate(meteoStore.lastUpdate) }}
+              Dernière mise à jour: {{ formatDate(lastUpdate) }}
             </div>
           </div>
 
@@ -34,13 +34,13 @@
       </v-col>
     </v-row>
 
-    <v-row v-if="!meteoStore.loading && meteoStore.liveData">
+    <v-row v-if="!meteoStore.loading && liveData">
       <v-col cols="12" sm="6" md="4">
         <SensorCard
           icon="mdi-thermometer"
           label="Température"
-          :value="meteoStore.measurements.temperature?.value?.toFixed(2) || '--'"
-          :unit="meteoStore.measurements.temperature?.unit || '°C'"
+          :value="measurements.temperature?.value?.toFixed(2) || '--'"
+          :unit="measurements.temperature?.unit || '°C'"
           color="#FF7675"
         />
       </v-col>
@@ -49,66 +49,60 @@
         <SensorCard
           icon="mdi-water-percent"
           label="Humidité"
-          :value="meteoStore.measurements.humidity?.value?.toFixed(2) || '--'"
-          :unit="meteoStore.measurements.humidity?.unit || '%'"
+          :value="measurements.humidity?.value?.toFixed(2) || '--'"
+          :unit="measurements.humidity?.unit || '%'"
           color="#74B9FF"
         />
       </v-col>
 
-     
       <v-col cols="12" sm="6" md="4">
         <SensorCard
           icon="mdi-weather-windy"
           label="Vitesse du vent"
-          :value="meteoStore.measurements.wind_speed?.value?.toFixed(1) || '--'"
-          :unit="meteoStore.measurements.wind_speed?.unit || 'km/h'"
+          :value="measurements.wind_speed?.value?.toFixed(1) || '--'"
+          :unit="measurements.wind_speed?.unit || 'km/h'"
           color="#55EFC4"
         />
       </v-col>
 
-    
       <v-col cols="12" sm="6" md="4">
         <SensorCard
           icon="mdi-gauge"
           label="Pression"
-          :value="meteoStore.measurements.pressure?.value?.toFixed(1) || '--'"
-          :unit="meteoStore.measurements.pressure?.unit || 'hPa'"
+          :value="measurements.pressure?.value?.toFixed(1) || '--'"
+          :unit="measurements.pressure?.unit || 'hPa'"
           color="#A29BFE"
         />
       </v-col>
 
-      
       <v-col cols="12" sm="6" md="4">
         <SensorCard
           icon="mdi-weather-rainy"
           label="Précipitations"
-          :value="meteoStore.measurements.rain?.value?.toFixed(1) || '--'"
-          :unit="meteoStore.measurements.rain?.unit || 'mm'"
+          :value="measurements.rain?.value?.toFixed(1) || '--'"
+          :unit="measurements.rain?.unit || 'mm'"
           color="#0984E3"
         />
       </v-col>
 
-   
       <v-col cols="12" sm="6" md="4">
         <SensorCard
           icon="mdi-compass"
           label="Direction du vent"
-          :value="getWindDirection(meteoStore.measurements.wind_direction?.value)"
-          :unit="meteoStore.measurements.wind_direction?.value ? `${meteoStore.measurements.wind_direction.value}°` : ''"
+          :value="getWindDirection(measurements.wind_direction?.value)"
+          :unit="measurements.wind_direction?.value ? `${measurements.wind_direction.value}°` : ''"
           color="#FDCB6E"
         />
       </v-col>
     </v-row>
 
- 
-    <v-row v-if="meteoStore.loading && !meteoStore.liveData">
+    <v-row v-if="meteoStore.loading && !liveData">
       <v-col cols="12" class="text-center py-12">
         <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
         <p class="mt-4 text-grey">Chargement des données...</p>
       </v-col>
     </v-row>
 
-    
     <v-row v-if="meteoStore.error">
       <v-col cols="12">
         <v-alert type="error" variant="tonal">
@@ -117,14 +111,12 @@
       </v-col>
     </v-row>
 
- 
     <v-row v-if="!meteoStore.loading && meteoStore.archiveData" class="mt-6">
-     
       <v-col cols="12">
         <ChartWidget
           title="Historique de température"
           icon="mdi-thermometer"
-          :data="meteoStore.temperatureHistory"
+          :data="temperatureHistory"
           color="#FF7675"
           unit="°C"
         />
@@ -134,7 +126,7 @@
         <ChartWidget
           title="Historique d'humidité"
           icon="mdi-water-percent"
-          :data="meteoStore.humidityHistory"
+          :data="humidityHistory"
           color="#74B9FF"
           unit="%"
         />
@@ -144,7 +136,7 @@
         <ChartWidget
           title="Historique de pression"
           icon="mdi-gauge"
-          :data="meteoStore.pressureHistory"
+          :data="pressureHistory"
           color="#A29BFE"
           unit="hPa"
         />
@@ -154,12 +146,20 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { useMeteoStore } from '@/stores/meteo'
 import SensorCard from '@/components/widgets/SensorCard.vue'
 import ChartWidget from '@/components/widgets/ChartWidget.vue'
 
 const meteoStore = useMeteoStore()
+
+const liveData = computed(() => meteoStore.sondes[0])
+const measurements = computed(() => liveData.value?.measurements || {})
+const stationLocation = computed(() => liveData.value?.location)
+const lastUpdate = computed(() => liveData.value?.date)
+const temperatureHistory = computed(() => meteoStore.archiveData?.temperature || [])
+const humidityHistory = computed(() => meteoStore.archiveData?.humidity || [])
+const pressureHistory = computed(() => meteoStore.archiveData?.pressure || [])
 
 const getWindDirection = (degrees) => {
   if (degrees === null || degrees === undefined) return '--'
@@ -187,10 +187,6 @@ const formatDate = (dateString) => {
 }
 
 onMounted(async () => {
-  await meteoStore.fetchLiveData()
-  
-  const now = Math.floor(Date.now() / 1000)
-  const oneDayAgo = now - 86400
-  await meteoStore.fetchArchiveData(oneDayAgo, now)
+  await meteoStore.fetchAllSondes()
 })
 </script>

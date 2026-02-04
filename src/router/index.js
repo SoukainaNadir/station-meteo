@@ -5,18 +5,24 @@ const router = createRouter({
   routes: [
     {
       path: '/',
+      name: 'dashboard',
+      component: () => import('@/views/DashboardView.vue')
+    },
+    {
+      path: '/map',
       name: 'map',
-      component: () => import('../views/MapView.vue')
+      component: () => import('@/views/MapView.vue')
     },
     {
       path: '/station/:id',
       name: 'station',
-      component: () => import('../views/StationView.vue')
+      component: () => import('@/views/StationView.vue')
     },
+    
     {
       path: '/comparison',
       name: 'comparison',
-      component: () => import('../views/ComparisonView.vue')
+      component: () => import('@/views/ComparisonView.vue')
     }
   ]
 })
