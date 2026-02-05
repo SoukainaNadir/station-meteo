@@ -41,7 +41,7 @@ const currentPageTitle = computed(() => {
   if (route.path.startsWith('/station/')) {
     const sondeId = route.params.id
     const sonde = meteoStore.getSondeById(sondeId)
-    return sonde ? `Station ${sonde.name}` : 'Détails de la Station'
+    return sonde ? `${sonde.name}` : 'Détails de la Station'
   }
   
   return pageTitles[route.path] || 'Station Météo Dashboard'
