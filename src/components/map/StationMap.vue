@@ -1,6 +1,7 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import { useMeteoStore } from "@/stores/meteo";
+import websocketService from "@/services/websocket.service";
 import Map from "ol/Map";
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
@@ -17,9 +18,12 @@ const meteoStore = useMeteoStore();
 
 const selectedStation = ref(null);
 const showStationDialog = ref(false);
+const wsConnected = ref(false);
+const lastUpdateTime = ref(null);
 
 let map = null;
 let vectorSource = null;
+let unsubscribe = null;
 
 const loadSondes = async () => {
   try {
@@ -44,8 +48,8 @@ const initMap = () => {
       }),
     ],
     view: new View({
-      center: fromLonLat([2.5875, 48.8417]),
-      zoom: 15,
+      center: fromLonLat([-0.1277583, 51.5073509]),
+      zoom: 10,
     }),
   });
 
@@ -67,6 +71,8 @@ const initMap = () => {
 };
 
 const addMarkers = () => {
+  if (!vectorSource) return;
+  
   vectorSource.clear();
 
   meteoStore.sondes.forEach((sonde) => {
@@ -84,7 +90,7 @@ const addMarkers = () => {
         image: new Circle({
           radius: 12,
           fill: new Fill({ color: getTemperatureColor(temperature) }),
-          stroke: new Stroke({ color: "#fff", width: 2 }),
+          stroke: new Stroke({ color: "#fff", width: 4 }),
         }),
         text: new Text({
           text: `${temperature.toFixed(1)}°`,
@@ -107,9 +113,48 @@ const getTemperatureColor = (temp) => {
   return "#FF7675";
 };
 
+watch(lastUpdateTime, () => {
+  if (lastUpdateTime.value) {
+    console.log("🔄 Mise à jour de la carte");
+    addMarkers();
+  }
+});
+
 onMounted(async () => {
   initMap();
   await loadSondes();
+  
+  if (meteoStore.sondes.length > 0) {
+    const firstSondeId = meteoStore.sondes[0].sonde_id;
+    const wsUrl = "ws://localhost:3000";
+    
+    try {
+      websocketService.connect(firstSondeId, wsUrl);
+      wsConnected.value = true;
+      
+      unsubscribe = websocketService.subscribe(
+        firstSondeId,
+        "live-update",
+        (data) => {
+          console.log("WebSocket carte:", data);
+          meteoStore.updateSondeMeasurements(firstSondeId, data.data);
+          lastUpdateTime.value = Date.now();
+        }
+      );
+    } catch (err) {
+      console.error("WebSocket error:", err);
+      wsConnected.value = false;
+    }
+  }
+});
+
+onUnmounted(() => {
+  if (unsubscribe) {
+    unsubscribe();
+  }
+  if (meteoStore.sondes.length > 0) {
+    websocketService.disconnect(meteoStore.sondes[0].sonde_id);
+  }
 });
 </script>
 
@@ -119,8 +164,12 @@ onMounted(async () => {
       <v-icon start color="primary">mdi-map-marker-multiple</v-icon>
       Carte des Sondes Météo
       <v-spacer></v-spacer>
-      <v-chip color="success" size="small">
-        {{ meteoStore.activeSondesCount }} sondes actives
+      <v-chip 
+        :color="wsConnected ? 'success' : 'grey'" 
+        size="small"
+      >
+        <v-icon start :icon="wsConnected ? 'mdi-wifi' : 'mdi-wifi-off'"></v-icon>
+        {{ meteoStore.activeSondesCount }} sondes
       </v-chip>
     </v-card-title>
 

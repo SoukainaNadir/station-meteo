@@ -30,8 +30,13 @@ class WebSocketService {
       console.error(`Erreur WebSocket sonde ${sondeId}:`, error)
     })
 
-    socket.on('sensor-update', (data) => {
-      this.notifyListeners(sondeId, 'sensor-update', data)
+    socket.on('live-update', (data) => {
+      this.notifyListeners(sondeId, 'live-update', data)
+    })
+
+    socket.on('connect', () => {
+      console.log(`Connecté à la sonde ${sondeId}`)
+      socket.emit('subscribe', {})  
     })
 
     this.sockets.set(sondeId, socket)
@@ -66,7 +71,7 @@ class WebSocketService {
     if (socket) {
       socket.disconnect()
       this.sockets.delete(sondeId)
-      
+
       for (const key of this.listeners.keys()) {
         if (key.startsWith(`${sondeId}:`)) {
           this.listeners.delete(key)

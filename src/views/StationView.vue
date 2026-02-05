@@ -1,11 +1,10 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useMeteoStore } from "@/stores/meteo";
 import SensorCard from "@/components/widgets/SensorCard.vue";
 import ChartWidget from "@/components/widgets/ChartWidget.vue";
 import websocketService from "@/services/websocket.service";
-
 const route = useRoute();
 const meteoStore = useMeteoStore();
 
@@ -24,38 +23,38 @@ const rainData = ref([]);
 
 const defaultPeriod = { label: "24h", value: "24h", hours: 24 };
 
-const activeChartTab = ref('temp');
+const activeChartTab = ref("temp");
 const selectedTempPeriod = ref("24h");
 const selectedHumidityPeriod = ref("24h");
 const selectedPressurePeriod = ref("24h");
 const selectedRainPeriod = ref("24h");
-
+const lastUpdateTime = ref(null);
 const tableHeaders = [
-  { title: 'Heure', key: 'time', sortable: true },
-  { title: 'Température', key: 'temperature', sortable: true },
-  { title: 'Humidité', key: 'humidity', sortable: true },
-  { title: 'Pression', key: 'pressure', sortable: true },
-  { title: 'Pluie', key: 'rain', sortable: true }
+  { title: "Heure", key: "time", sortable: true },
+  { title: "Température", key: "temperature", sortable: true },
+  { title: "Humidité", key: "humidity", sortable: true },
+  { title: "Pression", key: "pressure", sortable: true },
+  { title: "Pluie", key: "rain", sortable: true },
 ];
 
 const tableData = computed(() => {
   if (!temperatureData.value.length) return [];
-  
+
   const combined = temperatureData.value.map((tempItem, index) => {
     const humItem = humidityData.value[index] || {};
     const pressItem = pressureData.value[index] || {};
     const rainItem = rainData.value[index] || {};
-    
+
     return {
       time: tempItem.time,
-      temperature: tempItem.value?.toFixed(1) || '--',
-      humidity: humItem.value?.toFixed(1) || '--',
-      pressure: pressItem.value?.toFixed(1) || '--',
-      rain: rainItem.value?.toFixed(1) || '--'
+      temperature: tempItem.value?.toFixed(1) || "--",
+      humidity: humItem.value?.toFixed(1) || "--",
+      pressure: pressItem.value?.toFixed(1) || "--",
+      rain: rainItem.value?.toFixed(1) || "--",
     };
   });
-  
-  return combined.slice(0, 50); // Last 50 entries
+
+  return combined.slice(0, 50);
 });
 
 const loadTemperatureData = async (period) => {
@@ -210,41 +209,79 @@ const formatDate = (dateString) => {
 };
 
 const formatTableTime = (dateString) => {
-  if (!dateString) return '--';
+  if (!dateString) return "--";
   const date = new Date(dateString);
-  return date.toLocaleString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
+  return date.toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 };
 
 const exportData = () => {
   const csv = [
-    ['Heure', 'Température (°C)', 'Humidité (%)', 'Pression (hPa)', 'Pluie (mm)'],
-    ...tableData.value.map(row => [
+    [
+      "Heure",
+      "Température (°C)",
+      "Humidité (%)",
+      "Pression (hPa)",
+      "Pluie (mm)",
+    ],
+    ...tableData.value.map((row) => [
       formatTableTime(row.time),
       row.temperature,
       row.humidity,
       row.pressure,
-      row.rain
-    ])
-  ].map(row => row.join(',')).join('\n');
-  
-  const blob = new Blob([csv], { type: 'text/csv' });
+      row.rain,
+    ]),
+  ]
+    .map((row) => row.join(","))
+    .join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv" });
   const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
   a.download = `station-${sondeId.value}-${new Date().toISOString()}.csv`;
   a.click();
   window.URL.revokeObjectURL(url);
 };
 
+watch(lastUpdateTime, async () => {
+  if (!lastUpdateTime.value) return;
+
+  console.log("Rechargement des graphiques et tableau...");
+
+  await Promise.all([
+    loadTemperatureData({
+      value: selectedTempPeriod.value,
+      hours: getHoursFromPeriod(selectedTempPeriod.value),
+    }),
+    loadHumidityData({
+      value: selectedHumidityPeriod.value,
+      hours: getHoursFromPeriod(selectedHumidityPeriod.value),
+    }),
+    loadPressureData({
+      value: selectedPressurePeriod.value,
+      hours: getHoursFromPeriod(selectedPressurePeriod.value),
+    }),
+    loadRainData({
+      value: selectedRainPeriod.value,
+      hours: getHoursFromPeriod(selectedRainPeriod.value),
+    }),
+  ]);
+});
+
+const getHoursFromPeriod = (period) => {
+  const map = { "1h": 1, "6h": 6, "12h": 12, "24h": 24, "7d": 168 };
+  return map[period] || 24;
+};
+
 onMounted(() => {
   loadStationData();
 
-  const wsUrl = "wss://websocketking.com";
+  const wsUrl = "ws://localhost:3000";
 
   try {
     websocketService.connect(sondeId.value, wsUrl);
@@ -252,10 +289,13 @@ onMounted(() => {
 
     unsubscribe = websocketService.subscribe(
       sondeId.value,
-      "sensor-update",
+      "live-update",
       (data) => {
         console.log("Mise à jour WebSocket reçue:", data);
-        meteoStore.refresh();
+
+        meteoStore.updateSondeMeasurements(sondeId.value, data.data);
+
+        lastUpdateTime.value = Date.now();
       },
     );
   } catch (err) {
@@ -283,7 +323,6 @@ onUnmounted(() => {
     </v-row>
 
     <template v-if="station">
-      <!-- Header -->
       <v-row>
         <v-col cols="12">
           <v-card elevation="2">
@@ -318,13 +357,14 @@ onUnmounted(() => {
         </v-col>
       </v-row>
 
-      <!-- Sensor Cards -->
       <v-row class="mt-4">
         <v-col cols="12" sm="6" md="4" lg="3">
           <SensorCard
             icon="mdi-thermometer"
             label="Température"
-            :value="station.measurements?.temperature?.value?.toFixed(1) || '--'"
+            :value="
+              station.measurements?.temperature?.value?.toFixed(1) || '--'
+            "
             :unit="station.measurements?.temperature?.unit || '°C'"
             color="#FF7675"
           />
@@ -375,7 +415,11 @@ onUnmounted(() => {
             icon="mdi-compass"
             label="Direction du vent"
             :value="getWindDirection(measurements.wind_heading?.value)"
-            :unit="measurements.wind_heading?.value ? `${measurements.wind_heading.value.toFixed(0)}°` : ''"
+            :unit="
+              measurements.wind_heading?.value
+                ? `${measurements.wind_heading.value.toFixed(0)}°`
+                : ''
+            "
             color="#FDCB6E"
           />
         </v-col>
@@ -394,7 +438,11 @@ onUnmounted(() => {
 
       <v-row v-if="meteoStore.loading">
         <v-col cols="12" class="text-center py-12">
-          <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+          <v-progress-circular
+            indeterminate
+            color="primary"
+            size="64"
+          ></v-progress-circular>
           <p class="mt-4 text-grey">Chargement des données...</p>
         </v-col>
       </v-row>
@@ -466,8 +514,13 @@ onUnmounted(() => {
               Évolution des mesures
             </v-card-title>
             <v-divider></v-divider>
-            
-            <v-tabs v-model="activeChartTab" bg-color="transparent" color="primary" grow>
+
+            <v-tabs
+              v-model="activeChartTab"
+              bg-color="transparent"
+              color="primary"
+              grow
+            >
               <v-tab value="temp">
                 <v-icon start>mdi-thermometer</v-icon>
                 Température
