@@ -633,6 +633,12 @@ onMounted(async () => {
     initMap();
     loadChartData();
 
+    const currentStation = meteoStore.getSondeById(selectedStationId.value);
+    if (!currentStation || currentStation.status === 'offline') {
+      console.log('Station offline');
+      return;
+    }
+
     const wsUrl = currentStation.server_url.replace("http://", "ws://");
     try {
       websocketService.connect(selectedStationId.value, wsUrl);
@@ -642,11 +648,8 @@ onMounted(async () => {
         selectedStationId.value,
         "live-update",
         (data) => {
-          console.log(" WebSocket data:", data);
-          meteoStore.updateSondeMeasurements(
-            selectedStationId.value,
-            data.data,
-          );
+          console.log("WebSocket data:", data);
+          meteoStore.updateSondeMeasurements(selectedStationId.value, data.data);
           lastUpdateTime.value = Date.now();
         },
       );

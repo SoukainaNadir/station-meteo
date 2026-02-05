@@ -108,39 +108,6 @@ const addMarkers = () => {
 };
 
 
-const createMarkerIcon = (temperature) => {
-  const color = getTemperatureColor(temperature);
-  
-  const svg = `
-    <svg width="40" height="50" xmlns="http://www.w3.org/2000/svg">
-      <!-- Shadow -->
-      <ellipse cx="20" cy="47" rx="8" ry="3" fill="rgba(0,0,0,0.2)"/>
-      
-      <!-- Pin shape -->
-      <path d="M 20 5 C 12 5 6 11 6 19 C 6 28 20 45 20 45 C 20 45 34 28 34 19 C 34 11 28 5 20 5 Z" 
-            fill="${color}" 
-            stroke="white" 
-            stroke-width="2.5"/>
-      
-      <!-- Inner circle -->
-      <circle cx="20" cy="19" r="8" fill="white" opacity="0.3"/>
-      
-      <!-- Temperature text -->
-      <text x="20" y="23" 
-            font-family="system-ui, sans-serif" 
-            font-size="11" 
-            font-weight="bold" 
-            fill="white" 
-            text-anchor="middle">${temperature.toFixed(1)}°</text>
-    </svg>
-  `;
-  
-  return new Icon({
-    src: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
-    anchor: [0.5, 1],
-    scale: 1,
-  });
-};
 
 const getTemperatureColor = (temp) => {
   if (temp < 10) return "#74B9FF";
@@ -161,37 +128,34 @@ onMounted(async () => {
   initMap();
   await loadSondes(); 
   
-  if (meteoStore.sondes.length > 0) {
-    const firstSondeId = meteoStore.sondes[0].sonde_id;
-    const wsUrl = currentStation.server_url.replace("http://", "ws://");
-    
-    try {
-      websocketService.connect(firstSondeId, wsUrl);
-      wsConnected.value = true;
+  meteoStore.sondes
+    .filter(s => s.status === 'online')
+    .forEach(sonde => {
+      const wsUrl = sonde.server_url.replace("http://", "ws://");
       
-      unsubscribe = websocketService.subscribe(
-        firstSondeId,
-        "live-update",
-        (data) => {
-          console.log("WebSocket carte:", data);
-          meteoStore.updateSondeMeasurements(firstSondeId, data.data);
-          lastUpdateTime.value = Date.now();
-        }
-      );
-    } catch (err) {
-      console.error("WebSocket error:", err);
-      wsConnected.value = false;
-    }
-  }
+      try {
+        websocketService.connect(sonde.sonde_id, wsUrl);
+        wsConnected.value = true;
+        
+        websocketService.subscribe(
+          sonde.sonde_id,
+          "live-update",
+          (data) => {
+            console.log(`WebSocket ${sonde.name}:`, data);
+            meteoStore.updateSondeMeasurements(sonde.sonde_id, data.data);
+            lastUpdateTime.value = Date.now();
+          }
+        );
+      } catch (err) {
+        console.error(`WebSocket error ${sonde.name}:`, err);
+      }
+    });
 });
 
 onUnmounted(() => {
-  if (unsubscribe) {
-    unsubscribe();
-  }
-  if (meteoStore.sondes.length > 0) {
-    websocketService.disconnect(meteoStore.sondes[0].sonde_id);
-  }
+  meteoStore.sondes.forEach(sonde => {
+    websocketService.disconnect(sonde.sonde_id);
+  });
 });
 </script>
 

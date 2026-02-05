@@ -278,33 +278,33 @@ const getHoursFromPeriod = (period) => {
   return map[period] || 24;
 };
 
-onMounted(() => {
-  loadStationData();
+onMounted(async () => {
+  await loadStationData();
 
   const currentStation = meteoStore.getSondeById(sondeId.value);
-
+  
   if (!currentStation || currentStation.status === "offline") {
-    console.log("Station offline, pas de WebSocket");
+    console.log("Station offline ou introuvable");
     return;
   }
 
   const wsUrl = currentStation.server_url.replace("http://", "ws://");
-
+  
   try {
     websocketService.connect(sondeId.value, wsUrl);
     wsConnected.value = true;
-
+    
     unsubscribe = websocketService.subscribe(
       sondeId.value,
       "live-update",
       (data) => {
-        console.log("Mise à jour WebSocket reçue:", data);
+        console.log("WebSocket update:", data);
         meteoStore.updateSondeMeasurements(sondeId.value, data.data);
         lastUpdateTime.value = Date.now();
-      },
+      }
     );
   } catch (err) {
-    console.error("Erreur WebSocket:", err);
+    console.error("WebSocket error:", err);
     wsConnected.value = false;
   }
 });
