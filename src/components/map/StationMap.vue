@@ -23,7 +23,6 @@ const lastUpdateTime = ref(null);
 
 let map = null;
 let vectorSource = null;
-let unsubscribe = null;
 
 const loadSondes = async () => {
   try {
