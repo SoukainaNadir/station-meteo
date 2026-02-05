@@ -248,30 +248,7 @@ const exportData = () => {
   window.URL.revokeObjectURL(url);
 };
 
-watch(lastUpdateTime, async () => {
-  if (!lastUpdateTime.value) return;
 
-  console.log("Rechargement des graphiques et tableau...");
-
-  await Promise.all([
-    loadTemperatureData({
-      value: selectedTempPeriod.value,
-      hours: getHoursFromPeriod(selectedTempPeriod.value),
-    }),
-    loadHumidityData({
-      value: selectedHumidityPeriod.value,
-      hours: getHoursFromPeriod(selectedHumidityPeriod.value),
-    }),
-    loadPressureData({
-      value: selectedPressurePeriod.value,
-      hours: getHoursFromPeriod(selectedPressurePeriod.value),
-    }),
-    loadRainData({
-      value: selectedRainPeriod.value,
-      hours: getHoursFromPeriod(selectedRainPeriod.value),
-    }),
-  ]);
-});
 
 const getHoursFromPeriod = (period) => {
   const map = { "1h": 1, "6h": 6, "12h": 12, "24h": 24, "7d": 168 };
@@ -299,8 +276,7 @@ onMounted(async () => {
       "live-update",
       (data) => {
         console.log("WebSocket update:", data);
-        meteoStore.updateSondeMeasurements(sondeId.value, data.data);
-        lastUpdateTime.value = Date.now();
+            meteoStore.updateSondeMeasurements(sondeId.value, data.data);
       }
     );
   } catch (err) {

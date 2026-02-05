@@ -355,7 +355,7 @@ let unsubscribe = null;
 
 const stationOptions = computed(() => {
   return meteoStore.sondes
-    .filter(s => s.status === 'online')
+    .filter((s) => s.status === "online")
     .map((sonde) => ({
       id: sonde.sonde_id,
       name: sonde.name,
@@ -441,7 +441,14 @@ const initMap = () => {
 
   vectorSource = new VectorSource();
 
-  meteoStore.sondes.forEach((sonde) => {
+  const onlineStations = meteoStore.sondes.filter((s) => s.status === "online");
+
+  if (onlineStations.length === 0) {
+    console.warn("Aucune station online pour afficher la carte");
+    return;
+  }
+
+  onlineStations.forEach((sonde) => {
     const temp = sonde.measurements?.temperature?.value || 15;
     const feature = new Feature({
       geometry: new Point(
@@ -480,11 +487,11 @@ const initMap = () => {
   });
 
   const centerLon =
-    meteoStore.sondes.reduce((sum, s) => sum + s.location.long, 0) /
-    meteoStore.sondes.length;
+    onlineStations.reduce((sum, s) => sum + s.location.long, 0) /
+    onlineStations.length;
   const centerLat =
-    meteoStore.sondes.reduce((sum, s) => sum + s.location.lat, 0) /
-    meteoStore.sondes.length;
+    onlineStations.reduce((sum, s) => sum + s.location.lat, 0) /
+    onlineStations.length;
 
   map = new Map({
     target: "map",
@@ -582,48 +589,6 @@ const refreshData = async () => {
   }
 };
 
-watch(lastUpdateTime, async () => {
-  if (!lastUpdateTime.value || !selectedStationId.value) return;
-
-  console.log("Rechargement des graphiques suite à WebSocket...");
-
-  await loadChartData({
-    value: activeTab.value === "temp" ? "24h" : "24h",
-    hours: 24,
-  });
-
-  if (map && vectorSource) {
-    vectorSource.clear();
-    meteoStore.sondes.forEach((sonde) => {
-      const temp = sonde.measurements?.temperature?.value || 15;
-      const feature = new Feature({
-        geometry: new Point(
-          fromLonLat([sonde.location.long, sonde.location.lat]),
-        ),
-        name: sonde.name,
-        id: sonde.sonde_id,
-        temperature: temp,
-      });
-      feature.setStyle(
-        new Style({
-          image: new Circle({
-            radius: 16,
-            fill: new Fill({ color: getTemperatureColor(temp) }),
-            stroke: new Stroke({ color: "#fff", width: 3 }),
-          }),
-          text: new Text({
-            text: `${temp.toFixed(1)}°`,
-            font: "bold 13px sans-serif",
-            fill: new Fill({ color: "#fff" }),
-            offsetY: 0,
-          }),
-        }),
-      );
-      vectorSource.addFeature(feature);
-    });
-  }
-});
-
 onMounted(async () => {
   await meteoStore.fetchAllSondes();
 
@@ -634,8 +599,8 @@ onMounted(async () => {
     loadChartData();
 
     const currentStation = meteoStore.getSondeById(selectedStationId.value);
-    if (!currentStation || currentStation.status === 'offline') {
-      console.log('Station offline');
+    if (!currentStation || currentStation.status === "offline") {
+      console.log("Station offline");
       return;
     }
 
@@ -649,8 +614,10 @@ onMounted(async () => {
         "live-update",
         (data) => {
           console.log("WebSocket data:", data);
-          meteoStore.updateSondeMeasurements(selectedStationId.value, data.data);
-          lastUpdateTime.value = Date.now();
+          meteoStore.updateSondeMeasurements(
+            selectedStationId.value,
+            data.data,
+          );
         },
       );
     } catch (err) {
