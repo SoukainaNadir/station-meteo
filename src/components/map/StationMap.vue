@@ -162,7 +162,7 @@ onMounted(async () => {
                 <v-icon color="wind">mdi-weather-windy</v-icon>
               </template>
               <v-list-item-title>
-                {{ selectedStation.measurements?.wind_speed?.value?.toFixed(1) }} km/h
+                {{ selectedStation.measurements?.wind_speed_avg?.value?.toFixed(1) }} km/h
               </v-list-item-title>
               <v-list-item-subtitle>Vent</v-list-item-subtitle>
             </v-list-item>

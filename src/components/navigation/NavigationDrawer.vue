@@ -24,7 +24,6 @@
 
     <v-divider></v-divider>
 
-    <!-- Navigation principale -->
     <v-list density="comfortable" nav class="px-2">
       <v-list-item
         v-for="item in mainNavItems"
@@ -40,7 +39,6 @@
 
     <v-divider class="my-3"></v-divider>
 
-    <!-- Section Mes Sondes -->
     <div v-if="!rail" class="px-4 py-2">
       <span class="text-caption text-grey-darken-1 font-weight-bold">MES SONDES</span>
     </div>
@@ -77,7 +75,6 @@
       ></v-list-item>
     </v-list>
 
-    <!-- Bottom navigation -->
     <template v-slot:append>
       <v-divider></v-divider>
       <v-list density="comfortable" nav class="px-2">

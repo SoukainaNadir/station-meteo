@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  station-meteo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: station-meteo-app
+    ports:
+      - "5173:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+
