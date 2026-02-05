@@ -87,7 +87,7 @@ export const useMeteoStore = defineStore('meteo', {
       this.loading = true
       this.error = null
 
-      const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+      const BASE_URL = 'http://piensg031:3000'
 
       try {
         const end = Math.floor(Date.now() / 1000)

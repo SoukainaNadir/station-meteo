@@ -11,8 +11,9 @@ import VectorSource from "ol/source/Vector";
 import Feature from "ol/Feature";
 import Point from "ol/geom/Point";
 import { fromLonLat } from "ol/proj";
+import { Style, Circle, Fill, Stroke, Text } from "ol/style";
 import "ol/ol.css";
-import { Icon, Style, Circle, Fill, Stroke, Text } from "ol/style";
+
 const meteoStore = useMeteoStore();
 
 const selectedStation = ref(null);
@@ -72,7 +73,6 @@ const initMap = () => {
 const addMarkers = () => {
   if (!vectorSource) return;
   vectorSource.clear();
-  
   meteoStore.sondes.forEach((sonde) => {
     const temperature = sonde.measurements?.temperature?.value || 0;
     const marker = new Feature({
@@ -81,13 +81,28 @@ const addMarkers = () => {
       ),
       sondeId: sonde.sonde_id,
     });
-    
     marker.setStyle(
       new Style({
-        image: createMarkerIcon(temperature),
-      }),
+        image: new Circle({
+          radius: 20,
+          fill: new Fill({ color: getTemperatureColor(temperature) }),
+          stroke: new Stroke({ 
+            color: "#ffffff", 
+            width: 4 
+          }),
+        }),
+        text: new Text({
+          text: `${temperature.toFixed(1)}°`,
+          font: "bold 14px system-ui",
+          fill: new Fill({ color: "#ffffff" }),
+          stroke: new Stroke({
+            color: "rgba(0, 0, 0, 0.5)",
+            width: 4
+          }),
+          offsetY: 1,
+        }),
+      }), 
     );
-    
     vectorSource.addFeature(marker);
   });
 };
