@@ -20,7 +20,7 @@ export default createVuetify({
           temperature: '#FF7675',
           humidity: '#74B9FF',
           pressure: '#A29BFE',
-          wind: '#55EFC4',
+          wind: '#55EFC4', 
           rain: '#0984E3',
           light: '#FFEAA7'
         }
