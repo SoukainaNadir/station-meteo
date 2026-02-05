@@ -281,7 +281,14 @@ const getHoursFromPeriod = (period) => {
 onMounted(() => {
   loadStationData();
 
-  const wsUrl = "ws://localhost:3000";
+  const currentStation = meteoStore.getSondeById(sondeId.value);
+
+  if (!currentStation || currentStation.status === "offline") {
+    console.log("Station offline, pas de WebSocket");
+    return;
+  }
+
+  const wsUrl = currentStation.server_url.replace("http://", "ws://");
 
   try {
     websocketService.connect(sondeId.value, wsUrl);
@@ -292,9 +299,7 @@ onMounted(() => {
       "live-update",
       (data) => {
         console.log("Mise à jour WebSocket reçue:", data);
-
         meteoStore.updateSondeMeasurements(sondeId.value, data.data);
-
         lastUpdateTime.value = Date.now();
       },
     );

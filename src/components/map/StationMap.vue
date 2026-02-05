@@ -48,7 +48,7 @@ const initMap = () => {
       }),
     ],
     view: new View({
-      center: fromLonLat([-0.1277583, 51.5073509]),
+      center: fromLonLat([139.691706, 35.689487]),
       zoom: 10,
     }),
   });
@@ -163,7 +163,7 @@ onMounted(async () => {
   
   if (meteoStore.sondes.length > 0) {
     const firstSondeId = meteoStore.sondes[0].sonde_id;
-    const wsUrl = "ws://localhost:3000";
+    const wsUrl = currentStation.server_url.replace("http://", "ws://");
     
     try {
       websocketService.connect(firstSondeId, wsUrl);

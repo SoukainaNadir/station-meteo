@@ -354,11 +354,13 @@ const lastUpdateTime = ref(null);
 let unsubscribe = null;
 
 const stationOptions = computed(() => {
-  return meteoStore.sondes.map((sonde) => ({
-    id: sonde.sonde_id,
-    name: sonde.name,
-    temp: sonde.measurements?.temperature?.value?.toFixed(1) || "--",
-  }));
+  return meteoStore.sondes
+    .filter(s => s.status === 'online')
+    .map((sonde) => ({
+      id: sonde.sonde_id,
+      name: sonde.name,
+      temp: sonde.measurements?.temperature?.value?.toFixed(1) || "--",
+    }));
 });
 
 const selectedStation = computed(() => {
@@ -631,7 +633,7 @@ onMounted(async () => {
     initMap();
     loadChartData();
 
-    const wsUrl = "ws://localhost:3000";
+    const wsUrl = currentStation.server_url.replace("http://", "ws://");
     try {
       websocketService.connect(selectedStationId.value, wsUrl);
       wsConnected.value = true;
@@ -640,7 +642,7 @@ onMounted(async () => {
         selectedStationId.value,
         "live-update",
         (data) => {
-          console.log("📡 WebSocket data:", data);
+          console.log(" WebSocket data:", data);
           meteoStore.updateSondeMeasurements(
             selectedStationId.value,
             data.data,

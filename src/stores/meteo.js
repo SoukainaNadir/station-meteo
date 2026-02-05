@@ -1,5 +1,10 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
+import { SERVERS } from '@/config/servers'
+
+const requestParams = {
+  data: 'temperature,humidity,pressure,wind_speed,wind_direction,rain,luminosity,wind_heading,wind_speed_avg,wind_speed_max,wind_speed_min'
+}
 
 export const useMeteoStore = defineStore('meteo', {
   state: () => ({
@@ -15,14 +20,16 @@ export const useMeteoStore = defineStore('meteo', {
       return state.sondes.find(s => s.sonde_id === sondeId)
     },
     activeSondesCount: (state) => {
-      return state.sondes.length
+      return state.sondes.filter(s => s.status === 'online').length
     },
     allTemperatures: (state) => {
-      return state.sondes.map(s => ({
-        sonde_id: s.sonde_id,
-        name: s.name,
-        value: s.measurements?.temperature?.value
-      }))
+      return state.sondes
+        .filter(s => s.status === 'online')
+        .map(s => ({
+          sonde_id: s.sonde_id,
+          name: s.name,
+          value: s.measurements?.temperature?.value
+        }))
     }
   },
 
@@ -30,90 +37,72 @@ export const useMeteoStore = defineStore('meteo', {
     async fetchAllSondes() {
       this.loading = true
       this.error = null
-      const BASE_URL = 'http://piensg031:3000'
-      const requestParams = {
-        data: 'temperature,humidity,pressure,wind_speed,wind_direction,rain,luminosity,wind_heading,wind_speed_avg,wind_speed_max,wind_speed_min'
-      }
+      this.sondes = []
 
-      console.log('Sending request to /meteo/v1/live')
-      console.log('   Params:', requestParams)
+      console.log(`Interrogation de ${SERVERS.length} serveurs...`)
 
-      try {
-        const response = await axios.get(`${BASE_URL}/meteo/v1/live`, {
-          params: requestParams
+      const requests = SERVERS.map(server => 
+        axios.get(`${server.url}/meteo/v1/live`, {
+          params: requestParams,
+          timeout: 5000
         })
+        .then(response => {
+          console.log(`✓ ${server.name} (${server.url}): OK`)
+          return {
+            sonde_id: server.id,
+            name: server.name,
+            server_url: server.url,
+            ...response.data.data,
+            status: 'online'
+          }
+        })
+        .catch(err => {
+          console.error(`✗ ${server.name} (${server.url}): ${err.message}`)
+          return {
+            sonde_id: server.id,
+            name: server.name,
+            server_url: server.url,
+            measurements: null,
+            status: 'offline',
+            error: err.message
+          }
+        })
+      )
 
-        console.log('Response received:', response.status)
-        console.log('   Data:', JSON.stringify(response.data, null, 2))
+      this.sondes = await Promise.all(requests)
+      this.loading = false
 
-        const newSonde = {
-          sonde_id: 'sonde_01',
-          name: 'Sonde Principale',
-          ...response.data.data
-        }
+      const onlineCount = this.sondes.filter(s => s.status === 'online').length
+      console.log(`Résultat: ${onlineCount}/${SERVERS.length} stations actives`)
 
-        const existing = this.sondes.find(s => s.sonde_id === 'sonde_01')
-
-        if (existing && existing.measurements) {
-          Object.assign(existing, {
-            ...newSonde,
-            measurements: existing.measurements
-          })
-        } else {
-          this.sondes = [newSonde]
-        }
-
-        console.log('Sondes updated in store:', this.sondes.length, 'sonde(s)')
-        console.log('   Sonde details:', this.sondes[0])
-
-        return this.sondes
-      } catch (err) {
-        console.error('Error in fetchAllSondes:')
-        console.error('   Message:', err.message)
-        console.error('   Response:', err.response?.data)
-        console.error('   Status:', err.response?.status)
-        console.error('   Full error:', err)
-        console.log('================================\n')
-
-        this.error = 'Erreur lors du chargement des sondes'
-        throw err
-      } finally {
-        this.loading = false
-      }
+      return this.sondes
     },
-
 
     async fetchArchiveDataByPeriod(sondeId, period, measurementType = 'temperature') {
       this.loading = true
       this.error = null
 
-      const BASE_URL = 'http://piensg031:3000'
+      const sonde = this.sondes.find(s => s.sonde_id === sondeId)
+      if (!sonde) throw new Error('Sonde introuvable')
+      if (sonde.status === 'offline') throw new Error('Station hors ligne')
 
       try {
         const end = Math.floor(Date.now() / 1000)
         const start = end - (period.hours * 3600)
 
-        console.log('Fetching archive data:', { start, end, measurementType })
-
-        const response = await axios.get(`${BASE_URL}/meteo/v1/archive`, {
+        const response = await axios.get(`${sonde.server_url}/meteo/v1/archive`, {
           params: { start, end }
         })
 
-        console.log('Archive response:', response.data)
-
-        if (!response.data) {
-          throw new Error('No data in response')
-        }
+        if (!response.data) throw new Error('No data in response')
 
         const { legend, data } = response.data
 
         if (!legend || !Array.isArray(legend)) {
-          console.error('Invalid legend:', legend)
           throw new Error('Invalid response format: missing or invalid legend')
         }
 
         if (!data || !Array.isArray(data)) {
-          console.error('Invalid data:', data)
           throw new Error('Invalid response format: missing or invalid data array')
         }
 
@@ -133,17 +122,14 @@ export const useMeteoStore = defineStore('meteo', {
           value: measurementType === 'rain' ? Math.max(0, row[measurementIndex]) : row[measurementIndex]
         }))
 
-        console.log('Parsed data points:', parsedData.length)
         return parsedData
       } catch (err) {
         this.error = 'Erreur lors du chargement de l\'historique'
-        console.error(' Erreur fetchArchiveDataByPeriod:', err)
-        console.error('   Full error:', err)
+        console.error('Erreur fetchArchiveDataByPeriod:', err)
         throw err
       } finally {
         this.loading = false
       }
-
     },
 
     updateSondeMeasurements(sondeId, newData) {
@@ -156,6 +142,7 @@ export const useMeteoStore = defineStore('meteo', {
         }
       }
     },
+
     async refresh() {
       await this.fetchAllSondes()
     }
