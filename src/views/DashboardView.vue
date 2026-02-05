@@ -1,6 +1,5 @@
 <template>
   <v-container fluid class="pa-4">
-    <!-- Header -->
     <v-row>
       <v-col cols="12">
         <div class="d-flex align-center mb-4">
@@ -59,8 +58,8 @@
         <SensorCard
           icon="mdi-weather-windy"
           label="Vitesse du vent"
-          :value="measurements.wind_speed?.value?.toFixed(1) || '--'"
-          :unit="measurements.wind_speed?.unit || 'km/h'"
+          :value="measurements.wind_speed_avg?.value?.toFixed(1) || '--'"
+          :unit="measurements.wind_speed_avg?.unit || 'km/h'"
           color="#55EFC4"
         />
       </v-col>
@@ -89,8 +88,8 @@
         <SensorCard
           icon="mdi-compass"
           label="Direction du vent"
-          :value="getWindDirection(measurements.wind_direction?.value)"
-          :unit="measurements.wind_direction?.value ? `${measurements.wind_direction.value}°` : ''"
+          :value="getWindDirection(measurements.wind_heading.value)"
+          :unit="measurements.wind_heading.value ? `${measurements.wind_heading.value}°` : ''"
           color="#FDCB6E"
         />
       </v-col>

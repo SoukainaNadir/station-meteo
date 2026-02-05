@@ -18,7 +18,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/meteo': {                           
-        target: 'http://host.docker.internal:3000',    
+        target: 'http://localhost:3000',    
         changeOrigin: true
       }
     }

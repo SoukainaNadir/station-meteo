@@ -31,9 +31,9 @@ export const useMeteoStore = defineStore('meteo', {
       console.log('=== FRONTEND: fetchAllSondes() ===')
       this.loading = true
       this.error = null
-      
-      const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-      
+
+      const BASE_URL = 'http://localhost:3000'     
+
       const requestParams = {
         data: 'temperature,humidity,pressure,wind_speed,wind_direction,rain,luminosity,wind_heading,wind_speed_avg,wind_speed_max,wind_speed_min'
       }
@@ -45,7 +45,6 @@ export const useMeteoStore = defineStore('meteo', {
         const response = await axios.get(`${BASE_URL}/meteo/v1/live`, {
           params: requestParams
         })
-
         console.log('✅ Response received:', response.status)
         console.log('   Data:', JSON.stringify(response.data, null, 2))
 
@@ -69,7 +68,7 @@ export const useMeteoStore = defineStore('meteo', {
         console.error('   Status:', err.response?.status)
         console.error('   Full error:', err)
         console.log('================================\n')
-        
+
         this.error = 'Erreur lors du chargement des sondes'
         throw err
       } finally {
@@ -80,7 +79,7 @@ export const useMeteoStore = defineStore('meteo', {
     async fetchArchiveDataByPeriod(sondeId, period, measurementType = 'temperature') {
       this.loading = true
       this.error = null
-      
+
       const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
       try {
@@ -88,7 +87,7 @@ export const useMeteoStore = defineStore('meteo', {
         const start = end - (period.hours * 3600)
 
         console.log('📊 Fetching archive data:', { start, end, measurementType })
-        
+
         const response = await axios.get(`${BASE_URL}/meteo/v1/archive`, {
           params: { start, end }
         })
