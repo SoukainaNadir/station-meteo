@@ -11,9 +11,8 @@ import VectorSource from "ol/source/Vector";
 import Feature from "ol/Feature";
 import Point from "ol/geom/Point";
 import { fromLonLat } from "ol/proj";
-import { Style, Circle, Fill, Stroke, Text } from "ol/style";
 import "ol/ol.css";
-
+import { Icon, Style, Circle, Fill, Stroke, Text } from "ol/style";
 const meteoStore = useMeteoStore();
 
 const selectedStation = ref(null);
@@ -72,36 +71,59 @@ const initMap = () => {
 
 const addMarkers = () => {
   if (!vectorSource) return;
-  
   vectorSource.clear();
-
+  
   meteoStore.sondes.forEach((sonde) => {
     const temperature = sonde.measurements?.temperature?.value || 0;
-
     const marker = new Feature({
       geometry: new Point(
         fromLonLat([sonde.location.long, sonde.location.lat]),
       ),
       sondeId: sonde.sonde_id,
     });
-
+    
     marker.setStyle(
       new Style({
-        image: new Circle({
-          radius: 12,
-          fill: new Fill({ color: getTemperatureColor(temperature) }),
-          stroke: new Stroke({ color: "#fff", width: 4 }),
-        }),
-        text: new Text({
-          text: `${temperature.toFixed(1)}°`,
-          font: "bold 11px sans-serif",
-          fill: new Fill({ color: "#fff" }),
-          offsetY: 0,
-        }),
+        image: createMarkerIcon(temperature),
       }),
     );
-
+    
     vectorSource.addFeature(marker);
+  });
+};
+
+
+const createMarkerIcon = (temperature) => {
+  const color = getTemperatureColor(temperature);
+  
+  const svg = `
+    <svg width="40" height="50" xmlns="http://www.w3.org/2000/svg">
+      <!-- Shadow -->
+      <ellipse cx="20" cy="47" rx="8" ry="3" fill="rgba(0,0,0,0.2)"/>
+      
+      <!-- Pin shape -->
+      <path d="M 20 5 C 12 5 6 11 6 19 C 6 28 20 45 20 45 C 20 45 34 28 34 19 C 34 11 28 5 20 5 Z" 
+            fill="${color}" 
+            stroke="white" 
+            stroke-width="2.5"/>
+      
+      <!-- Inner circle -->
+      <circle cx="20" cy="19" r="8" fill="white" opacity="0.3"/>
+      
+      <!-- Temperature text -->
+      <text x="20" y="23" 
+            font-family="system-ui, sans-serif" 
+            font-size="11" 
+            font-weight="bold" 
+            fill="white" 
+            text-anchor="middle">${temperature.toFixed(1)}°</text>
+    </svg>
+  `;
+  
+  return new Icon({
+    src: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
+    anchor: [0.5, 1],
+    scale: 1,
   });
 };
 
@@ -115,14 +137,14 @@ const getTemperatureColor = (temp) => {
 
 watch(lastUpdateTime, () => {
   if (lastUpdateTime.value) {
-    console.log("🔄 Mise à jour de la carte");
+    console.log("Mise à jour de la carte");
     addMarkers();
   }
 });
 
 onMounted(async () => {
   initMap();
-  await loadSondes();
+  await loadSondes(); 
   
   if (meteoStore.sondes.length > 0) {
     const firstSondeId = meteoStore.sondes[0].sonde_id;

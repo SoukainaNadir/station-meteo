@@ -50,7 +50,7 @@ const tableData = computed(() => {
       temperature: tempItem.value?.toFixed(1) || "--",
       humidity: humItem.value?.toFixed(1) || "--",
       pressure: pressItem.value?.toFixed(1) || "--",
-      rain: rainItem.value?.toFixed(1) || "--",
+      rain: rainItem.value?.toFixed(5) || "--",
     };
   });
 

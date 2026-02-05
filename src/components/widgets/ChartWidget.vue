@@ -194,9 +194,9 @@ const chartOptions = computed(() => {
         },
       },
       y: {
-        min: min,
+        min: props.unit === "mm" ? 0 : min,
         max: max,
-        beginAtZero: false,
+        beginAtZero: props.unit === "mm",
         grid: {
           color: "rgba(0, 0, 0, 0.05)",
         },
@@ -230,7 +230,8 @@ const getDefaultOptions = () => ({
       },
       callbacks: {
         label: (context) => {
-          return `${context.parsed.y.toFixed(1)} ${props.unit}`;
+          const decimals = props.unit === "mm" ? 4 : 2;
+          return `${context.parsed.y.toFixed(decimals)} ${props.unit}`;
         },
       },
     },
@@ -252,7 +253,10 @@ const getDefaultOptions = () => ({
         color: "rgba(0, 0, 0, 0.05)",
       },
       ticks: {
-        callback: (value) => `${value} ${props.unit}`,
+        callback: (value) => {
+          const decimals = props.unit === "mm" ? 4 : 2;
+          return `${value.toFixed(decimals)} ${props.unit}`;
+        },
       },
     },
   },

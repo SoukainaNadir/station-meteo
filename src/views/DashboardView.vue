@@ -287,9 +287,7 @@
                 <v-icon color="#0984E3">mdi-weather-rainy</v-icon>
               </template>
               <v-list-item-title>
-                {{
-                  selectedMapStation.measurements?.rain?.value?.toFixed(1)
-                }}
+                {{ selectedMapStation.measurements?.rain?.value?.toFixed(6) }}
                 mm
               </v-list-item-title>
               <v-list-item-subtitle>Précipitations</v-list-item-subtitle>
@@ -321,21 +319,21 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useMeteoStore } from '@/stores/meteo'
-import ChartWidget from '@/components/widgets/ChartWidget.vue'
-import websocketService from '@/services/websocket.service'
-import Map from 'ol/Map'
-import View from 'ol/View'
-import TileLayer from 'ol/layer/Tile'
-import OSM from 'ol/source/OSM'
-import VectorLayer from 'ol/layer/Vector'
-import VectorSource from 'ol/source/Vector'
-import Feature from 'ol/Feature'
-import Point from 'ol/geom/Point'
-import { fromLonLat } from 'ol/proj'
-import { Style, Circle, Fill, Stroke, Text } from 'ol/style'
-import 'ol/ol.css'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
+import { useMeteoStore } from "@/stores/meteo";
+import ChartWidget from "@/components/widgets/ChartWidget.vue";
+import websocketService from "@/services/websocket.service";
+import Map from "ol/Map";
+import View from "ol/View";
+import TileLayer from "ol/layer/Tile";
+import OSM from "ol/source/OSM";
+import VectorLayer from "ol/layer/Vector";
+import VectorSource from "ol/source/Vector";
+import Feature from "ol/Feature";
+import Point from "ol/geom/Point";
+import { fromLonLat } from "ol/proj";
+import { Style, Circle, Fill, Stroke, Text } from "ol/style";
+import "ol/ol.css";
 
 const meteoStore = useMeteoStore();
 
@@ -455,19 +453,27 @@ const initMap = () => {
     feature.setStyle(
       new Style({
         image: new Circle({
-          radius: 16,
-          fill: new Fill({ color: getTemperatureColor(temp) }),
-          stroke: new Stroke({ color: "#fff", width: 3 }),
+          radius: 24,
+          fill: new Fill({
+            color: getTemperatureColor(temp),
+          }),
+          stroke: new Stroke({
+            color: "rgba(255, 255, 255, 0.95)",
+            width: 3,
+          }),
         }),
         text: new Text({
           text: `${temp.toFixed(1)}°`,
-          font: "bold 13px sans-serif",
-          fill: new Fill({ color: "#fff" }),
+          font: "600 15px 'Inter', 'Segoe UI', system-ui, sans-serif",
+          fill: new Fill({ color: "#ffffff" }),
+          stroke: new Stroke({
+            color: "rgba(0, 0, 0, 0.25)",
+            width: 5,
+          }),
           offsetY: 0,
         }),
       }),
     );
-
     vectorSource.addFeature(feature);
   });
 

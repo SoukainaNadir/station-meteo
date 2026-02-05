@@ -30,7 +30,7 @@ export const useMeteoStore = defineStore('meteo', {
     async fetchAllSondes() {
       this.loading = true
       this.error = null
-      const BASE_URL = 'http://localhost:3000'
+      const BASE_URL = 'http://piensg031:3000'
       const requestParams = {
         data: 'temperature,humidity,pressure,wind_speed,wind_direction,rain,luminosity,wind_heading,wind_speed_avg,wind_speed_max,wind_speed_min'
       }
@@ -130,7 +130,7 @@ export const useMeteoStore = defineStore('meteo', {
 
         const parsedData = data.map(row => ({
           time: row[timeIndex],
-          value: row[measurementIndex]
+          value: measurementType === 'rain' ? Math.max(0, row[measurementIndex]) : row[measurementIndex]
         }))
 
         console.log('Parsed data points:', parsedData.length)
@@ -143,6 +143,7 @@ export const useMeteoStore = defineStore('meteo', {
       } finally {
         this.loading = false
       }
+
     },
 
     updateSondeMeasurements(sondeId, newData) {
