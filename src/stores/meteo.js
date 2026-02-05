@@ -41,32 +41,32 @@ export const useMeteoStore = defineStore('meteo', {
 
       console.log(`Interrogation de ${SERVERS.length} serveurs...`)
 
-      const requests = SERVERS.map(server => 
+      const requests = SERVERS.map(server =>
         axios.get(`${server.url}/meteo/v1/live`, {
           params: requestParams,
           timeout: 5000
         })
-        .then(response => {
-          console.log(`✓ ${server.name} (${server.url}): OK`)
-          return {
-            sonde_id: server.id,
-            name: server.name,
-            server_url: server.url,
-            ...response.data.data,
-            status: 'online'
-          }
-        })
-        .catch(err => {
-          console.error(`✗ ${server.name} (${server.url}): ${err.message}`)
-          return {
-            sonde_id: server.id,
-            name: server.name,
-            server_url: server.url,
-            measurements: null,
-            status: 'offline',
-            error: err.message
-          }
-        })
+          .then(response => {
+            console.log(`✓ ${server.name} (${server.url}): OK`)
+            return {
+              sonde_id: server.id,
+              name: server.name,
+              server_url: server.url,
+              ...response.data.data,
+              status: 'online'
+            }
+          })
+          .catch(err => {
+            console.error(`✗ ${server.name} (${server.url}): ${err.message}`)
+            return {
+              sonde_id: server.id,
+              name: server.name,
+              server_url: server.url,
+              measurements: null,
+              status: 'offline',
+              error: err.message
+            }
+          })
       )
 
       this.sondes = await Promise.all(requests)
@@ -91,7 +91,11 @@ export const useMeteoStore = defineStore('meteo', {
         const start = end - (period.hours * 3600)
 
         const response = await axios.get(`${sonde.server_url}/meteo/v1/archive`, {
-          params: { start, end }
+          params: {
+            start,
+            end,
+            data: requestParams.data  
+          }
         })
 
         if (!response.data) throw new Error('No data in response')
