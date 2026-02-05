@@ -24,10 +24,39 @@ const rainData = ref([]);
 
 const defaultPeriod = { label: "24h", value: "24h", hours: 24 };
 
+const activeChartTab = ref('temp');
 const selectedTempPeriod = ref("24h");
 const selectedHumidityPeriod = ref("24h");
 const selectedPressurePeriod = ref("24h");
 const selectedRainPeriod = ref("24h");
+
+const tableHeaders = [
+  { title: 'Heure', key: 'time', sortable: true },
+  { title: 'Température', key: 'temperature', sortable: true },
+  { title: 'Humidité', key: 'humidity', sortable: true },
+  { title: 'Pression', key: 'pressure', sortable: true },
+  { title: 'Pluie', key: 'rain', sortable: true }
+];
+
+const tableData = computed(() => {
+  if (!temperatureData.value.length) return [];
+  
+  const combined = temperatureData.value.map((tempItem, index) => {
+    const humItem = humidityData.value[index] || {};
+    const pressItem = pressureData.value[index] || {};
+    const rainItem = rainData.value[index] || {};
+    
+    return {
+      time: tempItem.time,
+      temperature: tempItem.value?.toFixed(1) || '--',
+      humidity: humItem.value?.toFixed(1) || '--',
+      pressure: pressItem.value?.toFixed(1) || '--',
+      rain: rainItem.value?.toFixed(1) || '--'
+    };
+  });
+  
+  return combined.slice(0, 50); // Last 50 entries
+});
 
 const loadTemperatureData = async (period) => {
   chartLoading.value = true;
@@ -180,6 +209,38 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString("fr-FR");
 };
 
+const formatTableTime = (dateString) => {
+  if (!dateString) return '--';
+  const date = new Date(dateString);
+  return date.toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+const exportData = () => {
+  const csv = [
+    ['Heure', 'Température (°C)', 'Humidité (%)', 'Pression (hPa)', 'Pluie (mm)'],
+    ...tableData.value.map(row => [
+      formatTableTime(row.time),
+      row.temperature,
+      row.humidity,
+      row.pressure,
+      row.rain
+    ])
+  ].map(row => row.join(',')).join('\n');
+  
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `station-${sondeId.value}-${new Date().toISOString()}.csv`;
+  a.click();
+  window.URL.revokeObjectURL(url);
+};
+
 onMounted(() => {
   loadStationData();
 
@@ -251,7 +312,7 @@ onUnmounted(() => {
 
             <v-card-subtitle class="pt-3">
               <v-icon start size="small">mdi-clock-outline</v-icon>
-              Dernière mise à jour: {{ formatDate(station.timestamp) }}
+              Dernière mise à jour: {{ formatDate(station.date) }}
             </v-card-subtitle>
           </v-card>
         </v-col>
@@ -331,7 +392,6 @@ onUnmounted(() => {
         </v-col>
       </v-row>
 
-      <!-- Loading & Error States -->
       <v-row v-if="meteoStore.loading">
         <v-col cols="12" class="text-center py-12">
           <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
@@ -347,58 +407,133 @@ onUnmounted(() => {
         </v-col>
       </v-row>
 
-      <!-- Charts -->
       <v-row v-if="!meteoStore.loading && station" class="mt-6">
         <v-col cols="12">
-          <ChartWidget
-            :key="`temp-${selectedTempPeriod}`"
-            title="Température"
-            icon="mdi-thermometer"
-            :data="temperatureData"
-            :loading="chartLoading"
-            color="#FF7675"
-            unit="°C"
-            @period-change="handleTemperaturePeriodChange"
-          />
+          <v-card elevation="2">
+            <v-card-title class="d-flex align-center">
+              <v-icon start color="primary">mdi-table</v-icon>
+              Historique des données
+              <v-spacer></v-spacer>
+              <v-btn
+                icon="mdi-download"
+                variant="text"
+                size="small"
+                @click="exportData"
+                title="Exporter en CSV"
+              ></v-btn>
+            </v-card-title>
+            <v-divider></v-divider>
+            <v-data-table
+              :headers="tableHeaders"
+              :items="tableData"
+              :loading="chartLoading"
+              :items-per-page="10"
+              class="elevation-0"
+            >
+              <template v-slot:item.time="{ item }">
+                {{ formatTableTime(item.time) }}
+              </template>
+              <template v-slot:item.temperature="{ item }">
+                <v-chip size="small" color="#FF7675" variant="flat">
+                  {{ item.temperature }}°C
+                </v-chip>
+              </template>
+              <template v-slot:item.humidity="{ item }">
+                <v-chip size="small" color="#74B9FF" variant="flat">
+                  {{ item.humidity }}%
+                </v-chip>
+              </template>
+              <template v-slot:item.pressure="{ item }">
+                <v-chip size="small" color="#A29BFE" variant="flat">
+                  {{ item.pressure }} hPa
+                </v-chip>
+              </template>
+              <template v-slot:item.rain="{ item }">
+                <v-chip size="small" color="#0984E3" variant="flat">
+                  {{ item.rain }} mm
+                </v-chip>
+              </template>
+            </v-data-table>
+          </v-card>
         </v-col>
+      </v-row>
 
-        <v-col cols="12" md="6">
-          <ChartWidget
-            :key="`humidity-${selectedHumidityPeriod}`"
-            title="Humidité"
-            icon="mdi-water-percent"
-            :data="humidityData"
-            :loading="chartLoading"
-            color="#74B9FF"
-            unit="%"
-            @period-change="handleHumidityPeriodChange"
-          />
-        </v-col>
+      <v-row v-if="!meteoStore.loading && station" class="mt-6">
+        <v-col cols="12">
+          <v-card elevation="2">
+            <v-card-title class="d-flex align-center">
+              <v-icon start color="primary">mdi-chart-line</v-icon>
+              Évolution des mesures
+            </v-card-title>
+            <v-divider></v-divider>
+            
+            <v-tabs v-model="activeChartTab" bg-color="transparent" color="primary" grow>
+              <v-tab value="temp">
+                <v-icon start>mdi-thermometer</v-icon>
+                Température
+              </v-tab>
+              <v-tab value="humidity">
+                <v-icon start>mdi-water-percent</v-icon>
+                Humidité
+              </v-tab>
+              <v-tab value="pressure">
+                <v-icon start>mdi-gauge</v-icon>
+                Pression
+              </v-tab>
+              <v-tab value="rain">
+                <v-icon start>mdi-weather-rainy</v-icon>
+                Pluie
+              </v-tab>
+            </v-tabs>
 
-        <v-col cols="12" md="6">
-          <ChartWidget
-            :key="`pressure-${selectedPressurePeriod}`"
-            title="Pression atmosphérique"
-            icon="mdi-gauge"
-            :data="pressureData"
-            :loading="chartLoading"
-            color="#A29BFE"
-            unit="hPa"
-            @period-change="handlePressurePeriodChange"
-          />
-        </v-col>
+            <v-card-text class="pa-4">
+              <v-window v-model="activeChartTab">
+                <v-window-item value="temp">
+                  <ChartWidget
+                    title="Évolution de la température"
+                    :data="temperatureData"
+                    :loading="chartLoading"
+                    color="#FF7675"
+                    unit="°C"
+                    @period-change="handleTemperaturePeriodChange"
+                  />
+                </v-window-item>
 
-        <v-col cols="12" md="6">
-          <ChartWidget
-            :key="`rain-${selectedRainPeriod}`"
-            title="Précipitations"
-            icon="mdi-weather-rainy"
-            :data="rainData"
-            :loading="chartLoading"
-            color="#0984E3"
-            unit="mm"
-            @period-change="handleRainPeriodChange"
-          />
+                <v-window-item value="humidity">
+                  <ChartWidget
+                    title="Évolution de l'humidité"
+                    :data="humidityData"
+                    :loading="chartLoading"
+                    color="#74B9FF"
+                    unit="%"
+                    @period-change="handleHumidityPeriodChange"
+                  />
+                </v-window-item>
+
+                <v-window-item value="pressure">
+                  <ChartWidget
+                    title="Évolution de la pression"
+                    :data="pressureData"
+                    :loading="chartLoading"
+                    color="#A29BFE"
+                    unit="hPa"
+                    @period-change="handlePressurePeriodChange"
+                  />
+                </v-window-item>
+
+                <v-window-item value="rain">
+                  <ChartWidget
+                    title="Évolution des précipitations"
+                    :data="rainData"
+                    :loading="chartLoading"
+                    color="#0984E3"
+                    unit="mm"
+                    @period-change="handleRainPeriodChange"
+                  />
+                </v-window-item>
+              </v-window>
+            </v-card-text>
+          </v-card>
         </v-col>
       </v-row>
     </template>

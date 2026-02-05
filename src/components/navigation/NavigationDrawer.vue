@@ -60,7 +60,7 @@
             variant="flat"
             class="font-weight-bold"
           >
-            {{ sonde.measurements?.temperature?.value?.toFixed(1) }}°
+            {{ sonde.measurements?.temperature?.value?.toFixed(2) }}°
           </v-chip>
         </template>
       </v-list-item>

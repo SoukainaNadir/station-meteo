@@ -13,7 +13,7 @@ const router = createRouter({
       name: 'map',
       component: () => import('@/views/MapView.vue')
     },
-    {
+    { 
       path: '/station/:id',
       name: 'station',
       component: () => import('@/views/StationView.vue')
