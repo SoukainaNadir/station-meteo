@@ -248,8 +248,6 @@ const exportData = () => {
   window.URL.revokeObjectURL(url);
 };
 
-
-
 const getHoursFromPeriod = (period) => {
   const map = { "1h": 1, "6h": 6, "12h": 12, "24h": 24, "7d": 168 };
   return map[period] || 24;
@@ -259,25 +257,25 @@ onMounted(async () => {
   await loadStationData();
 
   const currentStation = meteoStore.getSondeById(sondeId.value);
-  
+
   if (!currentStation || currentStation.status === "offline") {
     console.log("Station offline ou introuvable");
     return;
   }
 
   const wsUrl = currentStation.server_url.replace("http://", "ws://");
-  
+
   try {
     websocketService.connect(sondeId.value, wsUrl);
     wsConnected.value = true;
-    
+
     unsubscribe = websocketService.subscribe(
       sondeId.value,
       "live-update",
       (data) => {
         console.log("WebSocket update:", data);
-            meteoStore.updateSondeMeasurements(sondeId.value, data.data);
-      }
+        meteoStore.updateSondeMeasurements(sondeId.value, data.data);
+      },
     );
   } catch (err) {
     console.error("WebSocket error:", err);
@@ -311,7 +309,7 @@ onUnmounted(() => {
               <v-icon start size="large">mdi-map-marker</v-icon>
               <div>
                 <div class="text-h5">{{ station.name }}</div>
-                <div class="text-caption">
+                <div class="text-caption" v-if="station.location">
                   {{ station.location.lat.toFixed(4) }}°N,
                   {{ station.location.long.toFixed(4) }}°E
                 </div>
